@@ -134,7 +134,8 @@ jobs:
           rm -f ./ccache &
           
           echo "正在克隆源码仓库..."
-          aria2c -s16 -x16 -k1M https://github.com/cctv18/android_gki_kernel_common/archive/refs/heads/android16-6.12-2025-06.zip -o common.zip && 
+          #aria2c -s16 -x16 -k1M https://github.com/cctv18/android_gki_kernel_common/archive/refs/heads/android16-6.12-2025-06.zip -o common.zip && 
+          aria2c -s16 -x16 -k1M "https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12-2025-06_r58/common-android16-6.12-2025-06_r58.tar.gz" -o common.tar.gz
           unzip -q common.zip && 
           mv "android_gki_kernel_common-android16-6.12-2025-06" common &&
           rm -rf common.zip &

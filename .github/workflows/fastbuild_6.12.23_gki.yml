@@ -110,7 +110,7 @@ jobs:
       actions: write
       contents: read
     steps:
-           - name: 安装环境依赖+初始化源码仓库及llvm-clang19工具链
+      - name: 安装环境依赖+初始化源码仓库及llvm-clang19工具链
         run: |
           rm -rf kernel_workspace
           mkdir kernel_workspace

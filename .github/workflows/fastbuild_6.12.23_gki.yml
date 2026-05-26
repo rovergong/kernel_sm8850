@@ -113,52 +113,40 @@ jobs:
       - name: 安装环境依赖+初始化源码仓库及llvm-clang19工具链
         run: |
           rm -rf kernel_workspace
-          mkdir kernel_workspace
+          mkdir -p kernel_workspace
           cd kernel_workspace
           echo "当前仓库：$GITHUB_REPOSITORY"
           echo "当前分支：$GITHUB_REF_NAME"
           
           sudo apt-mark hold firefox &&
           sudo apt-mark hold libc-bin &&
-          sudo apt purge man-db &&
+          sudo apt purge -y man-db &&
           sudo rm -rf /var/lib/man-db/auto-update &&
           sudo apt update &&
-          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev
+          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev aria2
           
-          #使用最新版ccache v4.12.2
-          wget https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/lib/ccache-x86-64 -O ccache
+          # 部署 ccache
+          wget -q https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/lib/ccache-x86-64 -O ccache
           sudo cp -f ./ccache /usr/bin/ccache
           sudo chmod +x /usr/bin/ccache
           rm -f ./ccache
           
-          echo "正在克隆源码仓库..."
+          echo "正在下载源码包..."
           aria2c -s16 -x16 -k1M "https://github.com/rovergong/gki-build/releases/download/gki-6.12-latest/gki-6.12-f01d585ebe1567ed9d53f4de4d703a481dd9e199.tar.gz" -o common.tar.gz
-          tar -xzf common.tar.gz
           
-          # ========== 修复目录移动报错 ==========
-          cd ..
-          INNER_DIR=$(find kernel_workspace -maxdepth 1 -type d ! -path "kernel_workspace/*/*" | head -n1)
-          mv "$INNER_DIR" kernel_workspace/common
-          cd kernel_workspace
-          # ===================================
+          # 解压并精准重命名，修复目录自嵌套报错
+          tar -xf common.tar.gz
+          # 只取一级子目录（排除压缩包自身）
+          SRC_DIR=$(find . -maxdepth 1 -type d ! -path '.' | head -n1)
+          if [ -n "$SRC_DIR" ]; then
+            mv "$SRC_DIR" common
+          fi
           
           echo "正在克隆llvm-clang19工具链..."
           mkdir -p clang19
           aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/clang-r536225.zip -o clang.zip
           unzip -q clang.zip -d clang19
           rm -rf clang.zip
-          
-          echo "正在克隆Rust 1.82.0工具链..."
-          mkdir -p rust
-          aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/rust.zip -o rust.zip
-          unzip -q rust.zip -d rust
-          rm -rf rust.zip
-          
-          echo "正在克隆构建工具..."
-          aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/build-tools.zip -o build-tools.zip
-          unzip -q build-tools.zip
-          rm -rf build-tools.zip
-
           
           echo "正在克隆Rust 1.82.0工具链..."
           mkdir -p rust
@@ -721,7 +709,7 @@ jobs:
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
-          - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
+          - KernelSU Next管理器下载：[KernelSU-Next/KernelSU-Next/releases]
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
           
           ### ⏫️ 更新内容：
@@ -733,5 +721,4 @@ jobs:
           2. 若你之前已有 root 权限，可在手机上安装[HorizonKernelFlasher](https://github.com/libxzr/HorizonKernelFlasher)，在HorizonKernelFlasher中刷入AnyKernel刷机包并重启；
           3. 若你之前已刷入SukiSU Ultra内核，且SukiSU Ultra管理器已更新至最新版本，可在SukiSU Ultra管理器中直接刷入AnyKernel刷机包并重启；
           4. 刷入无lz4kd补丁版的内核前若刷入过lz4kd补丁版的内核，为避免出错，请先关闭zram模块；
-          5. 由于KernelSU上游更新了元模块功能，最新版KSU管理器（包括除KernelSU Next以外的各分支）需要配合元模块(metamodule)才能正常挂载模块。目前的元模块包括[meta overlayfs](https://github.com/KernelSU-Modules-Repo/meta-overlayfs), [mountify](https://github.com/backslashxx/mountify), [meta magicmount](https://github.com/7a72/meta-magic_mount/), [meta magicmount rs](https://github.com/Tools-cx-app/meta-magic_mount/), [hybrid mount](https://github.com/YuzakiKokuban/meta-hybrid_mount)等。若你是第一次使用KSU或刚从旧版KSU管理器升级至新版，请先安装一个元模块，这样其他涉及系统挂载的模块才能正常运行；
-          6. KernelPatch Next（即KPN）是一个独立于KSU的KPM实现，可以运行在任意KSU/面具环境中（不适用于Apatch），且不能与(Re)SukiSU内置的kpm功能共同使用，使用
+          5. 由于KernelSU上游更新了元模块功能，最新版KSU管理器（包括除KernelSU Next以外的各分支）需要配合元模块(metamodule)才能正常挂载模块。目前的元模块包括[meta overlayfs](https://github.com/KernelSU-Modules-Repo/meta-overlayfs), [mountify](https://github.com/backslashxx/mountify), [meta magicmount](https://github.com/7a72/meta-magic_mount/), [meta magicmount rs](https://github.com/Tools-cx-app/meta-m
